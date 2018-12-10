@@ -17,11 +17,9 @@ using Nop.Core.Domain;
 using Nop.Core.Domain.Security;
 using Nop.Core.Http;
 using Nop.Core.Infrastructure;
-using Nop.Core.Plugins;
 using Nop.Data;
 using Nop.Services.Authentication;
 using Nop.Services.Authentication.External;
-using Nop.Services.Localization;
 using Nop.Services.Logging;
 using Nop.Services.Security;
 using Nop.Services.Tasks;
@@ -67,23 +65,7 @@ namespace Nop.Web.Framework.Infrastructure.Extensions
             TaskManager.Instance.Start();
 
             //log application start
-            EngineContext.Current.Resolve<ILogger>().Information("Application started");
-
-            //install plugins
-            var customerActivityService = engine.Resolve<ICustomerActivityService>();
-            var localizationService = engine.Resolve<ILocalizationService>();
-            var logger = engine.Resolve<ILogger>();
-            foreach (var installedPluginSystemName in PluginManager.InstallPluginsIfNeed())
-            {
-                customerActivityService.InsertActivity("InstallNewPlugin", string.Format(localizationService.GetResource("ActivityLog.InstallNewPlugin"), installedPluginSystemName));
-            }
-
-            //log plugin installation errors
-            foreach (var descriptor in PluginManager.ReferencedPlugins.Where(pluginDescriptor=>pluginDescriptor.Error != null))
-            {
-                logger.Error(string.Format(localizationService.GetResource("ActivityLog.NotInstalledNewPluginError"), descriptor.SystemName), descriptor.Error);
-                descriptor.Error = null;
-            }
+            engine.Resolve<ILogger>().Information("Application started");
 
             return serviceProvider;
         }
@@ -244,7 +226,6 @@ namespace Nop.Web.Framework.Infrastructure.Extensions
             var typeFinder = new WebAppTypeFinder();
             var externalAuthConfigurations = typeFinder.FindClassesOfType<IExternalAuthenticationRegistrar>();
             var externalAuthInstances = externalAuthConfigurations
-                .Where(x => PluginManager.FindPlugin(x)?.Installed ?? true) //ignore not installed plugins
                 .Select(x => (IExternalAuthenticationRegistrar)Activator.CreateInstance(x));
 
             foreach (var instance in externalAuthInstances)

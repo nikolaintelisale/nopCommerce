@@ -153,7 +153,7 @@ namespace Nop.Web.Areas.Admin.Factories
             //prepare page parameters
             searchModel.SetGridPageSize();
 
-            searchModel.NeedToRestart = PluginManager.NeedToRestartForApplayChanges;
+            searchModel.NeedToRestart = PluginManager.NeedToRestartForApplyChanges;
 
             return searchModel;
         }
@@ -174,12 +174,13 @@ namespace Nop.Web.Areas.Admin.Factories
 
             //get plugins
             var plugins = _pluginFinder.GetPluginDescriptors(group: group, loadMode: loadMode)
+                .Where(p=>p.ShowInPluginsList)
                 .OrderBy(plugin => plugin.Group).ToList();
 
             //prepare list model
             var model = new PluginListModel
             {
-                Data = plugins.Where(p=>p.ShowInPluginsList).PaginationByRequestModel(searchModel).Select(pluginDescriptor =>
+                Data = plugins.PaginationByRequestModel(searchModel).Select(pluginDescriptor =>
                 {
                     //fill in model values from the entity
                     var pluginModel = pluginDescriptor.ToPluginModel<PluginModel>();

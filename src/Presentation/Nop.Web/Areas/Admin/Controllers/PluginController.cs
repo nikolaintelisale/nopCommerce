@@ -49,6 +49,7 @@ namespace Nop.Web.Areas.Admin.Controllers
         private readonly IUploadService _uploadService;
         private readonly IWebHelper _webHelper;
         private readonly IWidgetService _widgetService;
+        private readonly IWorkContext _workContext;
         private readonly PaymentSettings _paymentSettings;
         private readonly ShippingSettings _shippingSettings;
         private readonly TaxSettings _taxSettings;
@@ -74,6 +75,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             IUploadService uploadService,
             IWebHelper webHelper,
             IWidgetService widgetService,
+            IWorkContext workContext,
             PaymentSettings paymentSettings,
             ShippingSettings shippingSettings,
             TaxSettings taxSettings,
@@ -95,6 +97,7 @@ namespace Nop.Web.Areas.Admin.Controllers
             this._uploadService = uploadService;
             this._webHelper = webHelper;
             this._widgetService = widgetService;
+            this._workContext = workContext;
             this._paymentSettings = paymentSettings;
             this._shippingSettings = shippingSettings;
             this._taxSettings = taxSettings;
@@ -274,7 +277,7 @@ namespace Nop.Web.Areas.Admin.Controllers
                 if (pluginDescriptor.Installed)
                     return RedirectToAction("List");
                 
-                PluginManager.PluginsInfo.AddToInstall(pluginDescriptor.SystemName);
+                PluginManager.PluginsInfo.AddToInstall(pluginDescriptor.SystemName, _workContext.CurrentCustomer);
                 pluginDescriptor.ShowInPluginsList = false;
                 _notificationService.SuccessNotification(_localizationService.GetResource("Admin.Configuration.Plugins.ChangesApplyAfterReboot"));
             }
@@ -364,7 +367,7 @@ namespace Nop.Web.Areas.Admin.Controllers
 
         [HttpPost, ActionName("List")]
         [FormValueRequired("plugin-applay-changes")]
-        public virtual IActionResult ApplayChanges()
+        public virtual IActionResult ApplyChanges()
         {
             return UninstallAndDeletePluginsIfNeed();
         }

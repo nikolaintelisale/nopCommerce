@@ -8,7 +8,7 @@
         <div class="pull-right">
             @if (Model.NeedToRestart)
             {
-                <button type="submit" name="plugin-applay-changes" class="btn bg-green">@T("Admin.Configuration.Plugins.ApplayChanges")</button>
+                <button type="submit" name="plugin-applay-changes" class="btn bg-green">@T("Admin.Configuration.Plugins.ApplyChanges")</button>
                 <button type="submit" name="plugin-discard-changes" class="btn bg-red">@T("Admin.Configuration.Plugins.DiscardChanges")</button>
             }
 
@@ -23,7 +23,7 @@
                     $("button[name='plugin-applay-changes']").on("click",
                         function(e) {
                             showThrobber(
-                                '@Html.Raw(JavaScriptEncoder.Default.Encode(T("Admin.Configuration.Plugins.ApplayChanges.Progress").Text))');
+                                '@Html.Raw(JavaScriptEncoder.Default.Encode(T("Admin.Configuration.Plugins.ApplyChanges.Progress").Text))');
                         });
                     $("button[name='plugin-discard-changes']").on("click",
                         function(e) {

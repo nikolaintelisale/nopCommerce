@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using Newtonsoft.Json;
+using Nop.Core.Domain.Customers;
 using Nop.Core.Infrastructure;
 
 namespace Nop.Core.Plugins
@@ -80,8 +81,7 @@ namespace Nop.Core.Plugins
             var needToPerform = InstalledPluginNames.Any(systemName =>
                 systemName.Equals(pluginSystemName, StringComparison.CurrentCultureIgnoreCase));
 
-            needToPerform = needToPerform || PluginNamesToInstall.Any(systemName =>
-                                systemName.Equals(pluginSystemName, StringComparison.CurrentCultureIgnoreCase));
+            needToPerform = needToPerform || IsPluginNeedToInstall(pluginSystemName);
 
             needToPerform = needToPerform && !PluginNamesToDelete.Any(systemName =>
                                 systemName.Equals(pluginSystemName, StringComparison.CurrentCultureIgnoreCase));
@@ -137,15 +137,35 @@ namespace Nop.Core.Plugins
         /// Add plugin to the installations list
         /// </summary>
         /// <param name="systemName">Plugin system name</param>
-        public void AddToInstall(string systemName)
+        /// <param name="customer">Customer</param>
+        public void AddToInstall(string systemName, Customer customer = null)
         {
-            if (PluginNamesToInstall.Any(p =>
-                p.Equals(systemName, StringComparison.CurrentCultureIgnoreCase)))
+            if (IsPluginNeedToInstall(systemName))
                 return;
 
-            PluginNamesToInstall.Add(systemName);
+            PluginNamesToInstall.Add(new PluginToInstall
+            {
+                SystemName = systemName,
+                CustomerGuid = customer?.CustomerGuid
+            });
 
             Save();
+        }
+
+        /// <summary>
+        /// Remove plugin from "to the installations" list
+        /// </summary>
+        /// <param name="systemName">Plugin system name</param>
+        public PluginToInstall RemoveFromToInstallList(string systemName)
+        {
+            var info = PluginNamesToInstall.FirstOrDefault(pluginName =>
+                pluginName.SystemName.Equals(systemName, StringComparison.CurrentCultureIgnoreCase));
+
+            PluginNamesToInstall.Remove(info);
+
+            Save();
+
+            return info;
         }
 
         /// <summary>
@@ -179,51 +199,6 @@ namespace Nop.Core.Plugins
         }
         
         /// <summary>
-        /// Mark plugin as installed
-        /// </summary>
-        /// <param name="systemName">Plugin system name</param>
-        public void MarkPluginAsInstalled(string systemName)
-        {
-            if (string.IsNullOrEmpty(systemName))
-                throw new ArgumentNullException(nameof(systemName));
-            
-            //add plugin system name to the list if doesn't already exist
-            var alreadyMarkedAsInstalled = InstalledPluginNames.Any(pluginName => pluginName.Equals(systemName, StringComparison.InvariantCultureIgnoreCase));
-            if (!alreadyMarkedAsInstalled)
-            {
-                InstalledPluginNames.Add(systemName);
-            }
-
-            Save();
-        }
-
-        /// <summary>
-        /// Mark plugin as uninstalled
-        /// </summary>
-        /// <param name="systemName">Plugin system name</param>
-        public void MarkPluginAsUninstalled(string systemName)
-        {
-            if (string.IsNullOrEmpty(systemName))
-                throw new ArgumentNullException(nameof(systemName));
-
-            //remove plugin system name from the list if exists
-            var alreadyMarkedAsInstalled = InstalledPluginNames.Any(pluginName => pluginName.Equals(systemName, StringComparison.InvariantCultureIgnoreCase));
-            if (alreadyMarkedAsInstalled)
-                InstalledPluginNames.Remove(systemName);
-
-            Save();
-        }
-
-        /// <summary>
-        /// Mark all plugin as uninstalled
-        /// </summary>
-        public void MarkAllPluginsAsUninstalled()
-        {
-            InstalledPluginNames.Clear();
-            Save();
-        }
-
-        /// <summary>
         /// Reset changes
         /// </summary>
         public void ResetChanges()
@@ -239,6 +214,16 @@ namespace Nop.Core.Plugins
 
             Save();
         }
+
+        /// <summary>
+        /// Check is the plugin need to be installed
+        /// </summary>
+        /// <param name="systemName">Plugin system name</param>
+        /// <returns>True if plugin need to be installed, else false</returns>
+        public bool IsPluginNeedToInstall(string systemName)
+        {
+            return PluginNamesToInstall.Any(pluginName => pluginName.SystemName.Equals(systemName, StringComparison.CurrentCultureIgnoreCase));
+        }
         
         #endregion
 
@@ -252,7 +237,7 @@ namespace Nop.Core.Plugins
         /// <summary>
         /// List of plugin names which will be installed
         /// </summary>
-        public IList<string> PluginNamesToInstall { get; set; } = new List<string>();
+        public IList<PluginToInstall> PluginNamesToInstall { get; set; } = new List<PluginToInstall>();
 
         /// <summary>
         /// List of plugin names which will be uninstalled
@@ -265,5 +250,21 @@ namespace Nop.Core.Plugins
         public IList<string> PluginNamesToDelete { get; set; } = new List<string>();
 
         #endregion
+
+        /// <summary>
+        /// Represents a plugin to install info
+        /// </summary>
+        public class PluginToInstall
+        {
+            /// <summary>
+            /// Plugin's system name
+            /// </summary>
+            public string SystemName { get; set; }
+
+            /// <summary>
+            /// Customer's GUID, who install this plugin
+            /// </summary>
+            public Guid? CustomerGuid { get; set; }
+        }
     }
 }

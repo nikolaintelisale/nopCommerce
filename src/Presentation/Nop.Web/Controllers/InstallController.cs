@@ -355,7 +355,7 @@ namespace Nop.Web.Controllers
                     DataSettingsManager.ResetCache();
 
                     //add plugins to install list
-                    PluginManager.PluginsInfo.MarkAllPluginsAsUninstalled();
+                    PluginManager.PluginsInfo.InstalledPluginNames.Clear();
                     var pluginFinder = EngineContext.Current.Resolve<IPluginFinder>();
                     var plugins = pluginFinder.GetPluginDescriptors(LoadPluginsMode.All)
                         .ToList()

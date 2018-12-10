@@ -268,7 +268,16 @@ set @resources='
   </LocaleResource>  
   <LocaleResource Name="Admin.System.Warnings.AssemblyHasCollision">
     <Value>The ''{0}'' assembly has collision, application loaded the ''{1}'' assembly, but {2}</Value>
-  </LocaleResource>   
+  </LocaleResource> 
+  <LocaleResource Name="Admin.Configuration.Plugins.Deleted">
+    <Value></Value>
+  </LocaleResource>
+  <LocaleResource Name="Admin.Configuration.Plugins.Installed">
+    <Value></Value>
+  </LocaleResource>  
+  <LocaleResource Name="Admin.Configuration.Plugins.Uninstalled">
+    <Value></Value>
+  </LocaleResource>    
 </Language>
 '
 

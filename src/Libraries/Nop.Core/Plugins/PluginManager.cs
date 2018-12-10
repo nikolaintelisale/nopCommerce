@@ -28,6 +28,7 @@ namespace Nop.Core.Plugins
         private static string _shadowCopyFolder;
         private static string _reserveShadowCopyFolder;
         private static NopConfig _config;
+        private static List<PluginsInfo.PluginToInstall> _lastInstalledPluginSystemNames;
         private static readonly Dictionary<string, PluginLoadedAssemblyInfo> _assemblyLoadedSeveralTimes = new Dictionary<string, PluginLoadedAssemblyInfo>();
 
         #endregion
@@ -307,11 +308,9 @@ namespace Nop.Core.Plugins
         {
             if (applicationPartManager == null)
                 throw new ArgumentNullException(nameof(applicationPartManager));
+
             _config = config ?? throw new ArgumentNullException(nameof(config));
-
-            if (applicationPartManager == null)
-                throw new ArgumentNullException(nameof(applicationPartManager));
-
+           
             if (_config == null)
                 throw new ArgumentNullException(nameof(_config));
 
@@ -521,8 +520,16 @@ namespace Nop.Core.Plugins
                 try
                 {
                     pluginDescriptor.Instance().Uninstall();
+
+                    //remove plugin system name from the list if exists
+                    var alreadyMarkedAsInstalled = PluginsInfo.InstalledPluginNames.Any(pluginName => pluginName.Equals(pluginDescriptor.SystemName, StringComparison.InvariantCultureIgnoreCase));
+                    if (alreadyMarkedAsInstalled)
+                        PluginsInfo.InstalledPluginNames.Remove(pluginDescriptor.SystemName);
+
                     PluginsInfo.PluginNamesToUninstall.Remove(pluginDescriptor.SystemName);
+
                     uninstalledPluginSystemNames.Add(pluginDescriptor.SystemName);
+
                     pluginDescriptor.Installed = false;
                     pluginDescriptor.ShowInPluginsList = true;
                 }
@@ -578,16 +585,16 @@ namespace Nop.Core.Plugins
         /// <summary>
         /// Install plugins if need
         /// </summary>
-        /// <returns>List of installed plugin system names</returns>
-        public static List<string> InstallPluginsIfNeed()
+        /// <returns></returns>
+        public static void InstallPluginsIfNeed()
         {
-            var installedPluginSystemNames = new List<string>();
+            _lastInstalledPluginSystemNames = new List<PluginsInfo.PluginToInstall>();
 
             foreach (var dfd in GetDescriptionFilesAndDescriptors(_fileProvider.MapPath(NopPluginDefaults.Path)))
             {
                 var pluginDescriptor = dfd.Value;
 
-                if (pluginDescriptor.Installed || !PluginsInfo.PluginNamesToInstall.Any(systemName => systemName.Equals(pluginDescriptor.SystemName, StringComparison.CurrentCultureIgnoreCase))) 
+                if (pluginDescriptor.Installed || !PluginsInfo.IsPluginNeedToInstall(pluginDescriptor.SystemName)) 
                     continue;
 
                 var loadedDescriptor = ReferencedPlugins.FirstOrDefault(p =>
@@ -599,8 +606,16 @@ namespace Nop.Core.Plugins
                 try
                 {
                     loadedDescriptor.Instance().Install();
-                    PluginsInfo.PluginNamesToInstall.Remove(loadedDescriptor.SystemName);
-                    installedPluginSystemNames.Add(loadedDescriptor.SystemName);
+
+                    //add plugin system name to the list if doesn't already exist
+                    var alreadyMarkedAsInstalled = PluginsInfo.InstalledPluginNames.Any(pluginName => pluginName.Equals(pluginDescriptor.SystemName, StringComparison.InvariantCultureIgnoreCase));
+                    if (!alreadyMarkedAsInstalled)
+                    {
+                        PluginsInfo.InstalledPluginNames.Add(pluginDescriptor.SystemName);
+                    }
+
+                    _lastInstalledPluginSystemNames.Add(PluginsInfo.RemoveFromToInstallList(loadedDescriptor.SystemName));
+
                     loadedDescriptor.Installed = true;
                 }
                 catch (Exception ex)
@@ -610,8 +625,6 @@ namespace Nop.Core.Plugins
             }
 
             PluginsInfo.Save();
-
-            return installedPluginSystemNames;
         }
 
         #endregion
@@ -631,7 +644,7 @@ namespace Nop.Core.Plugins
         /// <summary>
         /// Indicates whether to restart the application to update the plugins
         /// </summary>
-        public static bool NeedToRestartForApplayChanges => PluginsInfo.PluginNamesToDelete.Any() || PluginsInfo.PluginNamesToInstall.Any() || PluginsInfo.PluginNamesToUninstall.Any();
+        public static bool NeedToRestartForApplyChanges => PluginsInfo.PluginNamesToDelete.Any() || PluginsInfo.PluginNamesToInstall.Any() || PluginsInfo.PluginNamesToUninstall.Any();
 
         /// <summary>
         /// Gets access to information about plugins
@@ -647,6 +660,20 @@ namespace Nop.Core.Plugins
             {
                 return _assemblyLoadedSeveralTimes.Select(item => item.Value)
                     .Where(loadedAssemblyInfo => loadedAssemblyInfo.IsCollisionExists).ToList();
+            }
+        }
+
+        /// <summary>
+        /// Gets a list of system names of last time installed plugins 
+        /// </summary>
+        public static IReadOnlyCollection<PluginsInfo.PluginToInstall> GetLastInstalledPlugins
+        {
+            get
+            {
+                if(!_lastInstalledPluginSystemNames?.Any() ?? true)
+                    InstallPluginsIfNeed();
+
+                return _lastInstalledPluginSystemNames;
             }
         }
 

@@ -8,7 +8,7 @@ using Nop.Services.Payments;
 
 namespace Nop.Services.Tests.Payments
 {
-    public class TestPaymentMethod : BasePlugin, IPaymentMethod
+    public class TestPaymentMethod : BasePugin, IPaymentMethod
     {
         #region Methods
         
