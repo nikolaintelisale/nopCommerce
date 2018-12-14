@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Net.Http;
+using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
 using Microsoft.AspNetCore.Http;
@@ -16,6 +16,7 @@ using Nop.Core.Domain.Common;
 using Nop.Core.Domain.Customers;
 using Nop.Core.Domain.Directory;
 using Nop.Core.Domain.Orders;
+using Nop.Core.Domain.Security;
 using Nop.Core.Domain.Tax;
 using Nop.Core.Infrastructure;
 using Nop.Core.Plugins;
@@ -213,7 +214,7 @@ namespace Nop.Web.Areas.Admin.Factories
 
             try
             {
-                using (var client = new HttpClient())
+                using (var client = _webHelper.CreateHttpClient())
                 {
                     //specify request timeout
                     client.Timeout = TimeSpan.FromMilliseconds(2000);
@@ -665,6 +666,67 @@ namespace Nop.Web.Areas.Admin.Factories
         }
 
         /// <summary>
+        /// Prepare proxy connection status warning model
+        /// </summary>
+        /// <param name="models">List of system warning models</param>
+        protected virtual void PrepareProxyConnectionStatusWarningModel(IList<SystemWarningModel> models)
+        {
+            if (models == null)
+                throw new ArgumentNullException(nameof(models));
+
+            var nopconfig = EngineContext.Current.Resolve<ProxySettings>();
+
+            if (!nopconfig.ProxyEnabled)
+            {
+                models.Add(new SystemWarningModel
+                {
+                    Level = SystemWarningLevel.Pass,
+                    Text = _localizationService.GetResource("Admin.System.Warnings.ProxyConfiguraiton.NotEnabled")
+                });
+                return;
+            }
+
+            try
+            {
+                var proxyAddress = $"{nopconfig.ProxyAddress}:{nopconfig.ProxyPort}";
+
+                var webProxy = new WebProxy(proxyAddress)
+                {
+                    BypassProxyOnLocal = nopconfig.ProxyBypassProxyOnLocal,
+                };
+
+                if (string.IsNullOrEmpty(nopconfig.ProxyUserName) & string.IsNullOrEmpty(nopconfig.ProxyPassword))
+                {
+                    webProxy.UseDefaultCredentials = true;
+                    webProxy.Credentials = CredentialCache.DefaultCredentials;
+                }
+                else
+                {
+                    webProxy.UseDefaultCredentials = false;
+                    webProxy.Credentials = new NetworkCredential()
+                    {
+                        UserName = nopconfig.ProxyUserName,
+                        Password = nopconfig.ProxyPassword
+                    };
+                }
+                models.Add(new SystemWarningModel
+                {
+                    Level = SystemWarningLevel.Pass,
+                    Text = _localizationService.GetResource("Admin.System.Warnings.ProxyConfiguraiton.OK")
+                });
+                return;
+            }
+            catch (Exception)
+            {
+                models.Add(new SystemWarningModel
+                {
+                    Level = SystemWarningLevel.Fail,
+                    Text = _localizationService.GetResource("Admin.System.Warnings.ProxyConfiguraiton.Failed")
+                });
+            }
+        }
+
+        /// <summary>
         /// Prepare system warning models
         /// </summary>
         /// <returns>List of system warning models</returns>
@@ -704,6 +766,9 @@ namespace Nop.Web.Areas.Admin.Factories
 
             //not active plugins
             PreparePluginsEnabledWarningModel(models);
+
+            //proxyconnection fail
+            PrepareProxyConnectionStatusWarningModel(models);
 
             return models;
         }

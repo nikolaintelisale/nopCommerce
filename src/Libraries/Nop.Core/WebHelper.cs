@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Http.Features;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Primitives;
 using Microsoft.Net.Http.Headers;
 using Nop.Core.Configuration;
 using Nop.Core.Data;
+using Nop.Core.Domain.Security;
 using Nop.Core.Http;
 using Nop.Core.Infrastructure;
 
@@ -472,6 +474,91 @@ namespace Nop.Core
                 rawUrl = $"{request.PathBase}{request.Path}{request.QueryString}";
 
             return rawUrl;
+        }
+
+        /// <summary>
+        /// Get HTTP client
+        /// </summary>
+        public virtual HttpClient CreateHttpClient()
+        {
+            var _proxySettings = EngineContext.Current.Resolve<ProxySettings>();
+
+            if (!_proxySettings.ProxyEnabled)
+            {
+                return new HttpClient();
+            }
+
+            var proxyAddress = $"{_proxySettings.ProxyAddress}:{_proxySettings.ProxyPort}";
+
+            var webProxy = new WebProxy(proxyAddress)
+            {
+                BypassProxyOnLocal = _proxySettings.ProxyBypassProxyOnLocal,
+            };
+
+            if (string.IsNullOrEmpty(_proxySettings.ProxyUserName) & string.IsNullOrEmpty(_proxySettings.ProxyPassword))
+            {
+                webProxy.UseDefaultCredentials = true;
+                webProxy.Credentials = CredentialCache.DefaultCredentials;
+            }
+            else
+            {
+                webProxy.UseDefaultCredentials = false;
+                webProxy.Credentials = new NetworkCredential()
+                {
+                    UserName = _proxySettings.ProxyUserName,
+                    Password = _proxySettings.ProxyPassword
+                };
+            }
+
+            var handler = new HttpClientHandler()
+            {
+                UseDefaultCredentials = webProxy.UseDefaultCredentials,
+                Proxy = webProxy,
+                PreAuthenticate = _proxySettings.ProxyPreAuthenticate,
+            };
+
+            return new HttpClient(handler);
+        }
+
+        /// <summary>
+        /// Get HTTP web request
+        /// </summary>
+        public virtual HttpWebRequest CreateHttpWebRequest(string requestUri)
+        {
+            var _proxySettings = EngineContext.Current.Resolve<ProxySettings>();
+
+            HttpWebRequest res = (HttpWebRequest)WebRequest.Create(requestUri);
+
+            if (!_proxySettings.ProxyEnabled)
+            {
+                return res;
+            }
+
+            var proxyAddress = $"{_proxySettings.ProxyAddress}:{_proxySettings.ProxyPort}";
+
+            var webProxy = new WebProxy(proxyAddress)
+            {
+                BypassProxyOnLocal = _proxySettings.ProxyBypassProxyOnLocal,
+            };
+
+            if (string.IsNullOrEmpty(_proxySettings.ProxyUserName) & string.IsNullOrEmpty(_proxySettings.ProxyPassword))
+            {
+                webProxy.UseDefaultCredentials = true;
+                webProxy.Credentials = CredentialCache.DefaultCredentials;
+            }
+            else
+            {
+                webProxy.UseDefaultCredentials = false;
+                webProxy.Credentials = new NetworkCredential()
+                {
+                    UserName = _proxySettings.ProxyUserName,
+                    Password = _proxySettings.ProxyPassword
+                };
+            }
+
+            res.Proxy = webProxy;
+
+            return res;
         }
 
         #endregion
